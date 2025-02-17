@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+  <Include href="KnownImageIds.vsct"/>
+  <Include href="VSGlobals.vsct"/>
+
+  <Commands package="MvvmHelper">
+    <Groups>
+      <Group guid="MvvmHelper" id="MyMenuGroup" priority="0x0600">
+        <Parent guid="VSMainMenu" id="ItemNode"/>
+      </Group>
+    </Groups>
+
+    <!--This section defines the elements the user can interact with, like a menu command or a button
+        or combo box in a toolbar. -->
+    <Buttons>
+      <Button guid="MvvmHelper" id="GenerateViewModelCommand" priority="0x0100" type="Button">
+        <Parent guid="MvvmHelper" id="MyMenuGroup" />
+        <Icon guid="ImageCatalogGuid" id="StatusInformation" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <CommandFlag>DynamicVisibility</CommandFlag>
+        <Strings>
+          <ButtonText>Generate ViewModel</ButtonText>
+          <LocCanonicalName>.MvvmHelper.GenerateViewModelCommand</LocCanonicalName>
+        </Strings>
+      </Button>
+    </Buttons>
+  </Commands>
+
+  <VisibilityConstraints>
+    <VisibilityItem guid="MvvmHelper" id="GenerateViewModelCommand" context="uiContextSupportedFiles" />
+  </VisibilityConstraints>
+  
+  <Symbols>
+    <GuidSymbol name="uiContextSupportedFiles" value="{660bc25f-3a95-48e6-ac0d-a8b8eda0fbce}" />
+    <GuidSymbol name="MvvmHelper" value="{748cdac9-0003-441c-9e0e-402953e3526e}">
+      <IDSymbol name="MyMenuGroup" value="0x0001" />
+      <IDSymbol name="GenerateViewModelCommand" value="0x0100" />
+    </GuidSymbol>
+   
+  </Symbols>
+</CommandTable>
