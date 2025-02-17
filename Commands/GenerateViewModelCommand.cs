@@ -1,98 +1,107 @@
-﻿using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
+using System.Text;
+using Microsoft.VisualStudio.Shell;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio;
 
 namespace MvvmHelper.Commands
 {
+    // Command to generate a ViewModel from a View file
     [Command(PackageIds.GenerateViewModelCommand)]
     internal sealed class GenerateViewModelCommand : BaseCommand<GenerateViewModelCommand>
     {
+        // Execute the command asynchronously
         protected override async Task ExecuteAsync(OleMenuCmdEventArgs e)
         {
             SolutionItem activeItem = await VS.Solutions.GetActiveItemAsync();
-            string fullPath = string.Empty;
-            string targetFileName = string.Empty;
-            string targetPath = string.Empty;
-            string filePath = activeItem?.FullPath;
-            string fileName = string.Empty;
-            if (filePath != null)
-            {
-                fullPath = Path.GetDirectoryName(filePath);
-            }
-
-            if (fullPath != null)
-            {
-                targetPath = fullPath.Replace("Views", "ViewModels");
-            }
-
-            if (activeItem != null)
-            {
-                fileName = Path.GetFileNameWithoutExtension(filePath);
-                targetFileName = fileName + "ViewModel.cs";
-            }
-
-            // Create ViewModel file asynchronously
-            await CreateViewModelFileAsync(targetPath, targetFileName, fileName);
+            if (activeItem == null || string.IsNullOrEmpty(activeItem.FullPath))
+                throw new InvalidOperationException("No active item selected.");
 
             Project project = await VS.Solutions.GetActiveProjectAsync();
+
+            string viewModelFilePath = GetViewModelFilePath(activeItem.FullPath);
+
+            await CreateViewModelFileAsync(viewModelFilePath, project);
+
             if (project != null)
-            {
-                // Add the newly created ViewModel file to the project
-                await AddExistingFiles(activeItem, new[] { targetPath +"\\"+ targetFileName });
-            }
+                await project.AddExistingFilesAsync(viewModelFilePath);
+            
         }
 
-        public static async Task<IEnumerable<PhysicalFile>> AddExistingFiles(SolutionItem solutionItem, params string[] filePaths)
+        // Generate the ViewModel file path
+        private static string GetViewModelFilePath(string viewFilePath)
         {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(viewFilePath);
+            string viewModelFileName = $"{fileNameWithoutExtension}ViewModel.cs";
 
-            solutionItem.GetItemInfo(out IVsHierarchy hierarchy, out uint itemId, out _);
+            string directoryPath = Path.GetDirectoryName(viewFilePath);
+            string viewModelDirectory = directoryPath.Replace("Views", "ViewModels");
 
-            VSADDRESULT[] result = new VSADDRESULT[filePaths.Count()];
-            IVsProject ip = (IVsProject)hierarchy;
+            Directory.CreateDirectory(viewModelDirectory);
 
-            // Ensure that the directory structure exists
-            string targetDirectory = Path.GetDirectoryName(filePaths[0]);
-            Directory.CreateDirectory(targetDirectory); // This will automatically handle directory creation if it doesn't exist
-
-            // Add files to the project
-            ErrorHandler.ThrowOnFailure(ip.AddItem(itemId, VSADDITEMOPERATION.VSADDITEMOP_LINKTOFILE, string.Empty,
-                (uint)filePaths.Count(), filePaths, IntPtr.Zero, result));
-
-            List<PhysicalFile> files = new();
-
-            foreach (string filePath in filePaths)
-            {
-                PhysicalFile? file = await PhysicalFile.FromFileAsync(filePath);
-                if (file != null)
-                {
-                    files.Add(file);
-                }
-            }
-
-            return files;
+            return Path.Combine(viewModelDirectory, viewModelFileName);
         }
 
-        private static async Task CreateViewModelFileAsync(string filePath, string fileName, string viewName)
+        private static async Task CreateViewModelFileAsync(string filePath, Project project)
         {
-            string path = Path.Combine(filePath, fileName);
-
-            // Ensure the target directory exists
-            Directory.CreateDirectory(filePath);
-
-            if (!File.Exists(path))
+           
+            if (!File.Exists(filePath))
             {
-                // Use FileStream to create the file and immediately close it to avoid locks
-                using (FileStream fs = File.Create(path))
-                {
-                    // Optionally write a template header or content here
-                    byte[] content = System.Text.Encoding.UTF8.GetBytes("// Generated ViewModel for " + viewName);
-                    await fs.WriteAsync(content, 0, content.Length);
-                }
+                (string className, string nameSpace) value = GetClassNameAndNamespace(filePath, project);
+                string className = value.className;
+                string nameSpace = value.nameSpace;
+
+                // Create the ViewModel file content
+                string content = $@"
+using System;
+
+namespace {nameSpace}
+{{
+    public class {className}
+    {{
+        public {className}() 
+        {{
+            // Constructor
+            Console.WriteLine(""{className} has been instantiated!"");
+        }}
+
+        public void Greet()
+        {{
+            Console.WriteLine(""Hello from {className}!"");
+        }}
+    }}
+}}";
+
+                using StreamWriter writer = new(filePath, false, Encoding.UTF8);
+                await writer.WriteAsync(content);
             }
         }
+
+        private static (string className, string nameSpace) GetClassNameAndNamespace(string filePath, Project project)
+        {
+            string projectRoot = Path.GetDirectoryName(project.FullPath);
+
+            string projectName = Path.GetFileNameWithoutExtension(project.FullPath);
+
+            string relativePath = GetRelativePath(projectRoot, filePath);
+
+            string className = Path.GetFileNameWithoutExtension(filePath);
+
+            string namespaceName = Path.GetDirectoryName(relativePath)?.Replace("\\", ".");
+
+            namespaceName = $"{projectName}.{namespaceName}";
+
+            return (className, namespaceName);
+        }
+
+        // Manually calculate the relative path between two file paths
+        private static string GetRelativePath(string fromPath, string toPath)
+        {
+            Uri fromUri = new(fromPath.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
+            Uri toUri = new(toPath);
+            Uri relativeUri = fromUri.MakeRelativeUri(toUri);
+            return Uri.UnescapeDataString(relativeUri.ToString()).Replace('/', Path.DirectorySeparatorChar);
+        }
+
     }
 }

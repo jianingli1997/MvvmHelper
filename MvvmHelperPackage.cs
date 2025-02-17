@@ -12,13 +12,8 @@ namespace MvvmHelper
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(PackageGuids.MvvmHelperString)]
     [ProvideUIContextRule("660bc25f-3a95-48e6-ac0d-a8b8eda0fbce", "XAML Files Only", "XAML",
-        ["Xaml"],
-        ["HierSingleSelectionName:.xaml$"])]
-    // [ProvideUIContextRule("660bc25f-3a95-48e6-ac0d-a8b8eda0fbce",
-    //    "Supported Files",
-    //     "CSharp | VisualBasic",
-    //     ["CSharp", "VisualBasic"],
-    //     ["HierSingleSelectionName:.cs$", "HierSingleSelectionName:.vb$"])]
+        ["Xaml","Xaml.cs"],
+        ["HierSingleSelectionName:.xaml$", "!HierSingleSelectionName:.xaml.cs$"],500)]
     public sealed class MvvmHelperPackage : ToolkitPackage
     {
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
