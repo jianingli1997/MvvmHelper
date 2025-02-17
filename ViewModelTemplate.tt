@@ -12,7 +12,7 @@ namespace <#= NameSpace #>
 	{
 		public <#= ClassName #>()
 		{
-			//ToDo Constructor
+			//ToDo 
 		}
 	}
 }
